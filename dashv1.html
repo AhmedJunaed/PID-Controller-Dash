@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bento PID Controller Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bento-radius: 20px;
+            --bento-spacing: 16px;
+            --bento-bg: rgba(255, 255, 255, 0.8);
+            --bento-border: 1px solid rgba(255, 255, 255, 0.3);
+            --bento-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--bento-spacing);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .bento-card {
+            background: var(--bento-bg);
+            backdrop-filter: blur(10px);
+            border-radius: var(--bento-radius);
+            border: var(--bento-border);
+            padding: 1.5rem;
+            box-shadow: var(--bento-shadow);
+            transition: transform 0.2s ease;
+        }
+
+        .bento-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .header-card {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--bento-spacing);
+        }
+
+        .status-led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #ff4757;
+            box-shadow: 0 0 8px rgba(255, 71, 87, 0.3);
+        }
+
+        .status-led.connected {
+            background: #2ed573;
+            box-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
+            animation: pulse 1.5s infinite;
+        }
+
+        .param-control {
+            margin-bottom: 1.2rem;
+        }
+
+        .param-control input {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 0.6rem 1rem;
+            width: 100%;
+        }
+
+        .btn-bento {
+            background: rgba(145, 144, 144, 0.53);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn-bento:hover {
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .speed-control {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="bento-card header-card">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-cpu fs-3"></i>
+                <h1 class="h4 mb-0">PID Controller</h1>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center" id="connectionStatus">
+                    <div class="status-led"></div>
+                    <span class="small">Disconnected</span>
+                </div>
+                <button class="btn btn-bento d-flex align-items-center gap-2" id="btnScan">
+                    <i class="bi bi-bluetooth"></i>
+                    <span>Connect</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PID Parameters -->
+        <div class="bento-card">
+            <h3 class="h5 mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-sliders"></i>
+                PID Parameters
+            </h3>
+            <div class="param-group">
+                <div class="param-control">
+                    <label class="small text-muted mb-1">Proportional (P)</label>
+                    <input type="number" id="kpInput" value="0.03" step="0.01">
+                </div>
+                <div class="param-control">
+                    <label class="small text-muted mb-1">Integral (I)</label>
+                    <input type="number" id="kiInput" value="0.0" step="0.01">
+                </div>
+                <div class="param-control">
+                    <label class="small text-muted mb-1">Derivative (D)</label>
+                    <input type="number" id="kdInput" value="0.2" step="0.01">
+                </div>
+            </div>
+            <button class="btn btn-bento w-100 mt-2" id="btnUpdateParams">
+                Update Parameters
+            </button>
+        </div>
+
+        <!-- Speed Control -->
+        <div class="bento-card">
+            <h3 class="h5 mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-speedometer2"></i>
+                Speed Control
+            </h3>
+            <div class="speed-control">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">Target</label>
+                        <input type="number" class="form-control text-center" id="lfSpeedInput" value="100">
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">Current</label>
+                        <input type="number" class="form-control text-center" id="currentSpeedInput" value="30">
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-bento w-100 mt-2" id="btnApplySpeed">
+                Apply Speed
+            </button>
+        </div>
+
+        <!-- System Controls -->
+        <div class="bento-card">
+            <h3 class="h5 mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-terminal"></i>
+                System Controls
+            </h3>
+            <div class="d-grid gap-2">
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnRun">
+                    <span>Start System</span>
+                    <i class="bi bi-play-circle"></i>
+                </button>
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnStop">
+                    <span>Emergency Stop</span>
+                    <i class="bi bi-power"></i>
+                </button>
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnCalibrate">
+                    <span>Calibrate</span>
+                    <i class="bi bi-tools"></i>
+                </button>
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnUploadParams">
+                    <span>Upload Parameters</span>
+                    <i class="bi bi-cloud-upload"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initial and Target Speed Values
+        let initialSpeed = 50;
+        let targetSpeed = 75;
+
+        // Create Initial Speed Gauge
+        const initialSpeedGauge = new Chart(document.getElementById('initialSpeedGauge'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [initialSpeed, 255 - initialSpeed], // Initial speed and background value
+                    backgroundColor: ['#2ecc71', '#ddd'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                rotation: 1 * Math.PI, // Start from the top
+                circumference: 1 * Math.PI, // Half circle
+                plugins: {
+                    tooltip: { enabled: false }
+                },
+                cutout: '70%',
+                maintainAspectRatio: false
+            }
+        });
+
+        // Create Target Speed Gauge
+        const targetSpeedGauge = new Chart(document.getElementById('targetSpeedGauge'), {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [targetSpeed, 255 - targetSpeed], // Target speed and background value
+                    backgroundColor: ['#3498db', '#ddd'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                rotation: 1 * Math.PI, // Start from the top
+                circumference: 1 * Math.PI, // Half circle
+                plugins: {
+                    tooltip: { enabled: false }
+                },
+                cutout: '70%',
+                maintainAspectRatio: false
+            }
+        });
+
+        // Update Speed Values based on User Input
+        document.getElementById('initialSpeedInput').addEventListener('input', function() {
+            initialSpeed = parseInt(this.value);
+            initialSpeedGauge.data.datasets[0].data = [initialSpeed, 255 - initialSpeed];
+            initialSpeedGauge.update();
+        });
+
+        document.getElementById('targetSpeedInput').addEventListener('input', function() {
+            targetSpeed = parseInt(this.value);
+            targetSpeedGauge.data.datasets[0].data = [targetSpeed, 255 - targetSpeed];
+            targetSpeedGauge.update();
+        });
+    </script>
+
+</body>
+</html>

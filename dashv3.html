@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bento PID Controller Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bento-radius: 20px;
+            --bento-spacing: 16px;
+            --bento-bg: rgba(255, 255, 255, 0.9);
+            --bento-border: 1px solid rgba(0, 0, 0, 0.1);
+            --bento-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --text-color: #2d3436;
+            --body-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --btn-bg: rgba(255, 255, 255, 0.9);
+            --btn-border: 1px solid rgba(0, 0, 0, 0.1);
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        .dark-mode {
+            --bento-bg: rgba(30, 30, 30, 0.9);
+            --bento-border: 1px solid rgba(255, 255, 255, 0.1);
+            --bento-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --text-color: #fff;
+            --body-bg: linear-gradient(to right, #141e30, #243b55);
+            --btn-bg: rgba(50, 50, 50, 0.9);
+            --btn-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: var(--body-bg);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            font-family: var(--font-family);
+        }
+
+        .nav-bar {
+            background: var(--bento-bg);
+            backdrop-filter: blur(10px);
+            border-radius: var(--bento-radius);
+            border: var(--bento-border);
+            box-shadow: var(--bento-shadow);
+            padding: 1rem 2rem;
+            margin-bottom: var(--bento-spacing);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--bento-spacing);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .bento-card {
+            background: var(--bento-bg);
+            backdrop-filter: blur(10px);
+            border-radius: var(--bento-radius);
+            border: var(--bento-border);
+            padding: 1.5rem;
+            box-shadow: var(--bento-shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-bento {
+            background: var(--btn-bg);
+            border: var(--btn-border);
+            color: var(--text-color);
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .btn-connect {
+            background-color:rgb(255, 41, 41) !important;
+            border-color: #ff6b6b !important;
+            color: white !important;
+        }
+        
+        .btn-connected {
+            background-color:rgb(46, 242, 79) !important;
+            border-color: #69db7c !important;
+            color: white !important;
+        }
+
+        .speed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .speed-visual {
+            height: 150px;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .device-list {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            min-width: 250px;
+            z-index: 1000;
+        }
+
+        .toast {
+            border: var(--bento-border);
+            background: var(--bento-bg);
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-cpu fs-4"></i>
+            <h2 class="h5 mb-0">PID Controller</h2>
+            <div id="connectedDevice" class="small ms-3" style="opacity: 0.8;"></div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <button id="themeToggle" class="btn btn-bento">
+                <i class="bi bi-moon"></i>
+            </button>
+            <div class="position-relative">
+                <button class="btn btn-connect d-flex align-items-center gap-2" id="btnScan">
+                    <i class="bi bi-bluetooth"></i>
+                    <span>Connect</span>
+                </button>
+                <div class="bento-card device-list d-none" id="deviceList">
+                    <div class="small mb-2">Available Devices:</div>
+                    <div class="list-group" id="devices"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard">
+        <!-- PID Parameters -->
+        <div class="bento-card">
+            <h3 class="h5 mb-3"><i class="bi bi-sliders me-2"></i>PID Parameters</h3>
+            <div class="mb-3">
+                <label class="small mb-1">Proportional (P)</label>
+                <input type="number" class="form-control bento-input" id="kpInput" value="0.03" step="0.01">
+            </div>
+            <div class="mb-3">
+                <label class="small mb-1">Integral (I)</label>
+                <input type="number" class="form-control bento-input" id="kiInput" value="0.0" step="0.01">
+            </div>
+            <div class="mb-3">
+                <label class="small mb-1">Derivative (D)</label>
+                <input type="number" class="form-control bento-input" id="kdInput" value="0.2" step="0.01">
+            </div>
+            <button class="btn btn-bento w-100" id="btnUpdateParams">
+                <i class="bi bi-arrow-clockwise me-2"></i>Update Parameters
+            </button>
+        </div>
+
+        <!-- Speed Control -->
+        <div class="bento-card">
+            <div class="speed-header">
+                <h3 class="h5 mb-0"><i class="bi bi-speedometer2 me-2"></i>Speed Control</h3>
+            </div>
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="speed-visual">
+                        <canvas id="targetSpeedChart"></canvas>
+                    </div>
+                    <div class="text-center small mb-2">Target Speed (0-255)</div>
+                    <input type="number" class="form-control bento-input text-center" 
+                          id="targetSpeedInput" value="100" min="0" max="255">
+                </div>
+                <div class="col-6">
+                    <div class="speed-visual">
+                        <canvas id="currentSpeedChart"></canvas>
+                    </div>
+                    <div class="text-center small mb-2">Current Speed (0-255)</div>
+                    <input type="number" class="form-control bento-input text-center" 
+                          id="currentSpeedInput" value="30" min="0" max="255">
+                </div>
+            </div>
+            <button class="btn btn-bento w-100 mt-3" id="btnApplySpeed">
+                <i class="bi bi-lightning-charge me-2"></i>Apply Speed
+            </button>
+        </div>
+
+        <!-- System Controls -->
+        <div class="bento-card">
+            <h3 class="h5 mb-3"><i class="bi bi-terminal me-2"></i>System Controls</h3>
+            <div class="d-grid gap-2">
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnRun">
+                    <span>Start System</span>
+                    <i class="bi bi-play-circle"></i>
+                </button>
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnStop">
+                    <span>Emergency Stop</span>
+                    <i class="bi bi-power"></i>
+                </button>
+                <button class="btn btn-bento d-flex justify-content-between align-items-center" id="btnCalibrate">
+                    <span>Calibrate</span>
+                    <i class="bi bi-tools"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast position-fixed bottom-0 end-0 m-3" role="alert" id="successToast">
+        <div class="bento-card d-flex p-3">
+            <div class="toast-body"></div>
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toast System
+        const toastEl = document.getElementById('successToast');
+        const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+        const showToast = (message) => {
+            document.querySelector('.toast-body').textContent = message;
+            toast.show();
+        };
+
+        // Speed Charts Configuration
+        const createSpeedChart = (id, color) => {
+            return new Chart(document.getElementById(id), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [100, 155],
+                        backgroundColor: [color, 'rgba(0,0,0,0.1)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    rotation: -90,
+                    circumference: 180,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        };
+
+        // Initialize Charts
+        const targetChart = createSpeedChart('targetSpeedChart', '#6c5ce7');
+        const currentChart = createSpeedChart('currentSpeedChart', '#00b894');
+
+        // Update Speed Charts
+        function updateSpeedChart(chart, value) {
+            chart.data.datasets[0].data = [value, 255 - value];
+            chart.update();
+        }
+
+        // Event Listeners
+        document.getElementById('btnApplySpeed').addEventListener('click', () => {
+            const targetSpeed = parseInt(document.getElementById('targetSpeedInput').value);
+            const currentSpeed = parseInt(document.getElementById('currentSpeedInput').value);
+            
+            updateSpeedChart(targetChart, targetSpeed);
+            updateSpeedChart(currentChart, currentSpeed);
+            showToast('Speed parameters updated successfully!');
+        });
+
+        // Theme Toggle
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+
+        // Button Confirmation
+        ['btnUpdateParams', 'btnRun', 'btnStop', 'btnCalibrate'].forEach(btn => {
+            document.getElementById(btn).addEventListener('click', () => {
+                const action = document.getElementById(btn).querySelector('span').textContent;
+                showToast(`${action} command sent successfully!`);
+            });
+        });
+
+        // Bluetooth Handling
+        let isConnected = false;
+        document.getElementById('btnScan').addEventListener('click', async () => {
+            const btnScan = document.getElementById('btnScan');
+            
+            try {
+                if (!isConnected) {
+                    const device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: ['battery_service']
+                    });
+                    
+                    isConnected = true;
+                    btnScan.classList.remove('btn-connect');
+                    btnScan.classList.add('btn-connected');
+                    btnScan.innerHTML = `<i class="bi bi-check2"></i> Connected`;
+                    document.getElementById('connectedDevice').textContent = 
+                        `Connected to: ${device.name || 'Unknown Device'}`;
+                    showToast(`Connected to ${device.name || 'Bluetooth device'}`);
+                } else {
+                    isConnected = false;
+                    btnScan.classList.remove('btn-connected');
+                    btnScan.classList.add('btn-connect');
+                    btnScan.innerHTML = `<i class="bi bi-bluetooth"></i> Connect`;
+                    document.getElementById('connectedDevice').textContent = '';
+                    showToast('Disconnected');
+                }
+            } catch (err) {
+                isConnected = false;
+                btnScan.classList.remove('btn-connected');
+                btnScan.classList.add('btn-connect');
+                btnScan.innerHTML = `<i class="bi bi-bluetooth"></i> Connect`;
+                showToast('Connection failed');
+            }
+        });
+
+        // Initialize Theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
+</body>
+</html> 
